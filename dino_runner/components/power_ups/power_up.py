@@ -20,7 +20,7 @@ class PowerUp(Sprite):
         self.rect.x -= game_speed
         if self.rect.x <- self.rect.width:
             power_ups.pop()
-
-
+        #aqui puedo poner un if para el hammer cambie de direnccion hacia adelante imoprtando el obsaculo para borrarlo
+        
     def draw(self, screen):
         screen.blit(self.image, self.rect)

@@ -1,10 +1,10 @@
 import pygame
 from pygame.sprite import Sprite
-from dino_runner.utils.constants import DUCKING, RUNNING, JUMPING, DUCKING_SHIELD, RUNNING_SHIELD, DUCKING_HAMMER, JUMPING_SHIELD,DEFAULT_TYPE, SHIELD_TYPE
+from dino_runner.utils.constants import DUCKING, RUNNING, JUMPING, DUCKING_SHIELD, RUNNING_SHIELD, DUCKING_HAMMER, JUMPING_SHIELD,DEFAULT_TYPE, SHIELD_TYPE, RUNNING_HAMMER, JUMPING_HAMMER, HAMMER_TYPE, HAMMER
 
-RUN_IMAGE = {DEFAULT_TYPE: RUNNING, SHIELD_TYPE: RUNNING_SHIELD}
-DUCK_IMAGE = {DEFAULT_TYPE: DUCKING, SHIELD_TYPE: DUCKING_SHIELD}
-JUMP_IMAGE = {DEFAULT_TYPE: JUMPING, SHIELD_TYPE: JUMPING_SHIELD}
+RUN_IMAGE =  {DEFAULT_TYPE: RUNNING, SHIELD_TYPE: RUNNING_SHIELD, HAMMER_TYPE: RUNNING_HAMMER}
+DUCK_IMAGE = {DEFAULT_TYPE: DUCKING, SHIELD_TYPE: DUCKING_SHIELD, HAMMER_TYPE: DUCKING_HAMMER}
+JUMP_IMAGE = {DEFAULT_TYPE: JUMPING, SHIELD_TYPE: JUMPING_SHIELD, HAMMER_TYPE: JUMPING_HAMMER}
 
 
 class Dinosour(Sprite):
@@ -12,6 +12,8 @@ class Dinosour(Sprite):
   Y_POS = 310
   Y_POS_DUCK = 340
   JUMP_SPEED = 8.5
+  X_HAMMER = -40
+  Y_HAMMER = 310
 
   def __init__(self):
     #self.image = RUNNING[0]
@@ -27,6 +29,14 @@ class Dinosour(Sprite):
     self.dino_duck = False
     self.has_power_up = False
     self.power_up_time = 0
+    self.hammer = HAMMER
+    self.hammer_show = self.image.get_rect()
+    #self.hammer_show.x = X_HAMMER
+    #self.hammer_show.y = Y_HAMMER
+    self.throw = False
+
+  def hammer_throw(self, game):
+    self.hammer_show.x += game.game_speed
 
   def update(self, user_input):
     if self.dino_run:
@@ -43,15 +53,20 @@ class Dinosour(Sprite):
       self.dino_jump = False
       self.dino_run = False
       self.dino_duck = True
+    elif user_input[pygame.K_RIGHT] and not self.dino_jump:
+      self.throw = True
     elif not self.dino_jump:
       self.dino_jump = False
       self.dino_run = True
       self.dino_duck = False
+    
 
     if self.step_index > 9:
       self.step_index = 0
 
   def draw(self, screen):
+    if self.throw == True:
+      screen.blit(self.hammer_show, self.X_HAMMER, self.Y_HAMMER)
     screen.blit(self.image, (self.dino_rect.x, self.dino_rect.y))
 
   def run(self):
