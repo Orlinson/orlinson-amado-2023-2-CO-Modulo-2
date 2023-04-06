@@ -1,9 +1,13 @@
 import pygame
-
-from dino_runner.components.dinosaur import Dinosour
+from dino_runner.components.counter import Counter
 from dino_runner.components.menu import Menu
 from dino_runner.components.obstacles.obstacle_manager import ObstacleManager
-from dino_runner.utils.constants import BG, FONT_STYLE, ICON, SCREEN_HEIGHT, SCREEN_WIDTH, TITLE, FPS, ICON
+from dino_runner.components.power_ups.power_up_manager import PowerUpManager
+from dino_runner.utils.constants import DEFAULT_TYPE
+
+from dino_runner.utils.constants import BG, FONT_STYLE, ICON, SCREEN_HEIGHT, SCREEN_WIDTH, TITLE, FPS
+from dino_runner.components.dinosaur import Dinosour
+
 
 class Game:
     GAME_SPEED = 20
@@ -19,29 +23,27 @@ class Game:
         self.y_pos_bg = 380
         self.player = Dinosour()
         self.obstacle_manager = ObstacleManager()
-        self.menu = Menu(self.screen, "Press any key to start...")
+        self.menu = Menu(self.screen)
         self.running = False
-        self.score = 0
-        self.history_deaths_count = 0
-        self.history_best_Score = 0
+        self.score = Counter()
+        self.death_count = Counter()
+        self.highest_score = Counter()
+        self.power_up_manager = PowerUpManager()
 
     def run(self):
         # Game loop: events - update - draw
         self.playing = True
-        self.obstacle_manager.reset_obstacles()
-        self.game_speed = self.GAME_SPEED
-        self.score = 0
+        self.reset_game()
         while self.playing:
             self.events()
             self.update()
             self.draw()
-        #Reset States
-
-        
 
     def execute(self):
         self.running = True
+        # mientras la aplicacion corra
         while self.running:
+            # y si no estoy jugando
             if not self.playing:
                 self.show_menu()
         pygame.display.quit()
@@ -57,6 +59,7 @@ class Game:
         self.player.update(user_input)
         self.obstacle_manager.update(self)
         self.update_score()
+        self.power_up_manager.update(self)
 
     def draw(self):
         self.clock.tick(FPS)
@@ -64,9 +67,9 @@ class Game:
         self.draw_background()
         self.player.draw(self.screen)
         self.obstacle_manager.draw(self.screen)
-        self.draw_score()
-        self.draw_score_max()
-        #self.draw_death_count()
+        self.score.draw(self.screen)
+        self.power_up_manager.draw(self.screen)
+        self.draw_power_up()
         pygame.display.update()
         pygame.display.flip()
 
@@ -83,56 +86,38 @@ class Game:
         self.menu.reset_screen_color(self.screen)
         half_screen_width = SCREEN_WIDTH // 2
         half_screen_height = SCREEN_HEIGHT // 2
-        self.screen.blit(ICON, (half_screen_width - 50, half_screen_height -140))
-        if self.history_deaths_count == 0:
-            self.menu.draw(self.screen)
+        self.screen.blit(ICON, (half_screen_width - 50, half_screen_height - 140))
+        if self.death_count.count == 0:
+            self.menu.draw(self.screen, 'Press any key to start')
         else:
-            self.menu.update_message('Dino Game over')
-            self.menu.draw(self.screen)
-            self.draw_score()
-            self.draw_score_max()
-            self.draw_death_count()
+            self.update_highest_score()
+            self.menu.draw(self.screen, 'Game Over')
+            self.menu.draw(self.screen, f'Score: {self.score.count}', half_screen_width, 350)
+            self.menu.draw(self.screen, f'Deaths: {self.death_count.count}', half_screen_width, 400)
+            self.menu.draw(self.screen, f'Highest Score: {self.highest_score.count}', half_screen_width, 500)
         self.menu.update(self)
 
     def update_score(self):
-        self.score += 1
-        self.history_deaths_count += 1
-        if self.score % 100 == 0 and self.game_speed < 500:
+        self.score.update()
+        if self.score.count % 100 == 0 and self.game_speed < 500:
             self.game_speed += 5
-        if self.history_best_Score < self.score:
-            self.history_best_Score = self.score
 
-    def draw_score(self):
-        font = pygame.font.Font(FONT_STYLE, 30)
-        text = font.render(f'Score: {self.score}', True, (0, 0, 0))
-        text_rect = text.get_rect()
-        if not self.playing:
-            text_rect.center = (550, 350)
-        else:
-            text_rect.center = (1000, 50)
-        self.screen.blit(text, text_rect)
-    
-    
-    def draw_score_max(self):
-        font = pygame.font.Font(FONT_STYLE, 30)
-        text = font.render(f'Score max: {self.history_best_Score}', True, (0, 0, 0))
-        text_rect = text.get_rect()
-        if not self.playing:
-            text_rect.center = (550, 400)
-        else:
-            text_rect.center = (700, 51)
-        self.screen.blit(text, text_rect)
+    def update_highest_score(self):
+        if self.score.count > self.highest_score.count:
+            self.highest_score.set_count(self.score.count)
 
-    def draw_death_count(self):
-        font = pygame.font.Font(FONT_STYLE, 30)
-        text = font.render(f'number of deaths: {self.history_deaths_count}', True, (0, 0, 0))
-        text_rect = text.get_rect()
-        text_rect.center = (550, 450)
-        self.screen.blit(text, text_rect)
+    def reset_game(self):
+        self.obstacle_manager.reset_obstacles()
+        self.score.reset()
+        self.game_speed = self.GAME_SPEED
+        self.player.reset()
+        self.power_up_manager.reset_power_ups()
 
-#    def draw_score(self):
-#        font = pygame.font.Font(FONT_STYLE, 30)
-#        text = font.render(f'Score: {self.score}', True, (0, 0, 0))
-#        text_rect = text.get_rect()
-#        text_rect.center = (1000, 50)
-#        self.screen.blit(text, text_rect)
+    def draw_power_up(self):
+        if self.player.has_power_up:
+            time_to_show = round((self.player.power_up_time - pygame.time.get_ticks())/1000, 2)
+            if time_to_show >= 0:
+                self.menu.draw(self.screen, f'{self.player.type.capitalize()} enabled for {time_to_show} seconds', 500, 50)
+            else:
+                self.player.has_power_up = False
+                self.player.type = DEFAULT_TYPE    
